@@ -32,12 +32,20 @@ export default {
       locales.map(async (locale) => {
         try {
           const { default: data } = await import(`./translations/${locale}.json`);
-
-          return { data, locale };
+          const prefixedData = Object.fromEntries(
+            Object.entries(data).map(([key, value]) => [`${PLUGIN_ID}.${key}`, value])
+          );
+          return {
+            data: prefixedData,
+            locale,
+          };
         } catch {
-          return { data: {}, locale };
+          return {
+            data: {},
+            locale,
+          };
         }
       })
     );
-  },
+  }
 };

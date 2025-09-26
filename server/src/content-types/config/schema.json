@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "xlsx_impexp_plugin_configs",
+  "info": {
+    "singularName": "xlsx-impexp-plugin-config",
+    "pluralName": "xlsx-impexp-plugin-configs",
+    "displayName": "Xlsx Import Export Config"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "selectedExportCollections": {
+      "type": "json"
+    },
+    "selectedImportCollections": {
+      "type": "json"
+    }
+  }
+}

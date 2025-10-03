@@ -1,9 +1,5 @@
 import type { Core } from '@strapi/strapi';
-
-interface ConfigData {
-  selectedExportCollections: string[];
-  selectedImportCollections: string[];
-}
+import type { ConfigData } from '../types';
 
 const configService = ({ strapi }: { strapi: Core.Strapi }) => ({
   async getConfig(): Promise<ConfigData> {

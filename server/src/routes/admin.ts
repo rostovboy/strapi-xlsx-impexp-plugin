@@ -27,4 +27,13 @@ export default [
       middlewares: [],
     },
   },
+  {
+    method: 'GET',
+    path: '/export',
+    handler: 'exportController.exportData',
+    config: {
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];

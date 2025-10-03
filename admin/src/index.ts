@@ -2,6 +2,7 @@ import { PLUGIN_ID } from './pluginId';
 import { Initializer } from './components/Initializer';
 import { PluginIcon } from './components/PluginIcon';
 import ExportButton from './components/ExportButton';
+import ImportButton from './components/ImportButton';
 
 export default {
   register(app: any) {
@@ -26,6 +27,11 @@ export default {
       name: PLUGIN_ID,
     });
 
+    // Injecting buttons
+    app.getPlugin('content-manager').injectComponent('listView', 'actions', {
+      name: 'importButton',
+      Component: ImportButton,
+    });
     app.getPlugin('content-manager').injectComponent('listView', 'actions', {
       name: 'exportButton',
       Component: ExportButton,

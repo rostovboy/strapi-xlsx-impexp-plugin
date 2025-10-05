@@ -36,4 +36,14 @@ export default [
       middlewares: [],
     },
   },
+  {
+    method: 'POST',
+    path: '/import',
+    handler: 'importController.importData',
+    config: {
+      auth: false,
+      policies: [],
+      middlewares: [],
+    },
+  },
 ];

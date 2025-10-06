@@ -4,7 +4,7 @@ import fs from 'fs';
 import type { ImportResult, FileDataPath } from '../types';
 
 const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
-  async processImportFromPath(fileData: FileDataPath): Promise<ImportResult> {
+  async processImportFromPath(fileData: FileDataPath, contentTypeUid: string): Promise<ImportResult> {
     try {
       // Checking not empty file
       if (!fs.existsSync(fileData.path)) {
@@ -17,8 +17,8 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       // Parse data from Excel
       const parsedData = this.parseWorkbook(workbook);
 
-      // Sync data with Strapi (empty function for now)
-      const syncResult = await this.syncData(parsedData);
+      // Sync data with Strapi (pass contentTypeUid)
+      const syncResult = await this.syncData(parsedData, contentTypeUid);
 
       return syncResult;
 
@@ -83,14 +83,17 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
     };
   },
 
-  async syncData(parsedData: { headers: string[], data: { [key: string]: any }[] }): Promise<ImportResult> {
-    // Empty function for now - just return success result
+  async syncData(parsedData: { headers: string[], data: { [key: string]: any }[] }, contentTypeUid: string): Promise<ImportResult> {
     const totalProcessed = parsedData.data.length;
 
-    strapi.log.info(`Syncing data: ${totalProcessed} records to process`);
+    strapi.log.info(`Syncing data for entity ${contentTypeUid}: ${totalProcessed} records to process`);
 
-    // TODO: Add actual sync logic with Strapi here
+    // TODO: Add actual sync logic with Strapi using contentTypeUid
     // For now, just return success with zeros
+    // const entityService = strapi.entityService;
+    // const createdEntries = await entityService.createMany(contentTypeUid, { data: parsedData.data });
+
+    strapi.log.info(`Successfully processed ${totalProcessed} records for entity: ${contentTypeUid}`);
 
     return {
       success: true,

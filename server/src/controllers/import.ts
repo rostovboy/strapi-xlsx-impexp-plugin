@@ -26,6 +26,15 @@ const importController = ({ strapi }: { strapi: Core.Strapi }) => ({
         return ctx.badRequest('The file is empty');
       }
 
+      // Get contentTypeUid from request body
+      const { contentTypeUid } = ctx.request.body;
+
+      if (!contentTypeUid) {
+        return ctx.badRequest('Content type UID is required');
+      }
+
+      strapi.log.info(`Importing data for entity: ${contentTypeUid}`);
+
       if (uploadedFile.filepath) {
         const fileData = {
           path: uploadedFile.filepath,
@@ -36,7 +45,7 @@ const importController = ({ strapi }: { strapi: Core.Strapi }) => ({
         const result = await strapi
           .plugin('strapi-xlsx-impexp-plugin')
           .service('importService')
-          .processImportFromPath(fileData);
+          .processImportFromPath(fileData, contentTypeUid); // Передаем UID в сервис
 
         // Return the simplified result
         ctx.send(result);

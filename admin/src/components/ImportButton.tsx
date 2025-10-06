@@ -86,15 +86,16 @@ const ImportButton = () => {
       return;
     }
 
-    await uploadFile(file);
+    await uploadFile(file, contentTypeUid);
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, contentTypeUid: string) => {
     setIsImporting(true);
 
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('contentTypeUid', contentTypeUid); // Добавляем UID сущности
 
       const response = await fetch('/strapi-xlsx-impexp-plugin/import', {
         method: 'POST',
@@ -108,6 +109,7 @@ const ImportButton = () => {
         const successMessage = [
           'Import completed successfully!',
           '',
+          `📊 Entity: ${contentTypeUid}`,
           `📊 Total processed: ${result.totalProcessed}`,
           `✅ Created: ${result.created}`,
           `🔄 Updated: ${result.updated}`,
@@ -126,6 +128,7 @@ const ImportButton = () => {
         const errorMessage = [
           'Import failed!',
           '',
+          `📊 Entity: ${contentTypeUid}`,
           '❌ Errors encountered:',
           ...result.errors.map((error: any, index: number) =>
             `${index + 1}. Row ${error.row}, Column "${error.column}": ${error.message}`
@@ -141,7 +144,7 @@ const ImportButton = () => {
       console.error('Error uploading file:', error);
       showModal(
         'Error',
-        'Error uploading file. Please try again.\n\nIf the problem persists, check your connection and file format.',
+        `Error uploading file for entity: ${contentTypeUid}\n\nIf the problem persists, check your connection and file format.`,
         false
       );
     } finally {

@@ -10,48 +10,95 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       if (!fs.existsSync(fileData.path)) {
         throw new Error('File not found at path: ' + fileData.path);
       }
+
       // Reading file with xlsx
       const workbook = XLSX.readFile(fileData.path);
-      // Parsing
-      return this.processWorkbook(workbook, fileData.originalname);
+
+      // Parse data from Excel
+      const parsedData = this.parseWorkbook(workbook);
+
+      // Sync data with Strapi (empty function for now)
+      const syncResult = await this.syncData(parsedData);
+
+      return syncResult;
+
     } catch (error: any) {
       strapi.log.error('Import service error (path):', error);
-      throw new Error(`Failed to parse Excel file from path: ${error.message}`);
+
+      return {
+        success: false,
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        errors: [{
+          row: 0,
+          column: 'System',
+          value: '',
+          message: error.message
+        }]
+      };
     }
   },
 
-  processWorkbook(workbook: any, fileName: string): ImportResult {
+  parseWorkbook(workbook: any): { headers: string[], data: { [key: string]: any }[] } {
     // Parse first sheet
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
 
     // Convert to Json
-    const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    if (data.length === 0) {
+    const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    if (rawData.length === 0) {
       throw new Error('The file is empty');
     }
 
-    // First line - titles
-    const headers: string[] = data[0].map((header: any, index: number) =>
+    // First line - titles (headers)
+    const headers: string[] = rawData[0].map((header: any, index: number) =>
       header ? String(header).trim() : `Column_${index + 1}`
     );
 
     // Other lines - data
-    const rows: any[][] = data.slice(1);
+    const rows: any[][] = rawData.slice(1);
 
-    // Filter empty lines
-    const nonEmptyRows = rows.filter(row =>
-      row.some(cell => cell !== null && cell !== undefined && cell !== '')
-    );
+    // Filter empty lines and transform to key-value objects
+    const keyValueData = rows
+      .filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''))
+      .map((row) => {
+        const rowObject: { [key: string]: any } = {};
 
-    strapi.log.info(`Parsed Excel file: ${headers.length} columns, ${nonEmptyRows.length} non-empty rows`);
+        // Create key-value pairs for each row
+        headers.forEach((header, index) => {
+          // Use empty string for missing values
+          rowObject[header] = row[index] !== undefined ? row[index] : '';
+        });
+
+        return rowObject;
+      });
+
+    strapi.log.info(`Parsed Excel file: ${headers.length} columns, ${keyValueData.length} non-empty rows`);
 
     return {
-      fileName: fileName,
-      headers: headers,
-      rowCount: nonEmptyRows.length,
-      data: nonEmptyRows.slice(0, 5),
-      totalRows: nonEmptyRows.length
+      headers,
+      data: keyValueData
+    };
+  },
+
+  async syncData(parsedData: { headers: string[], data: { [key: string]: any }[] }): Promise<ImportResult> {
+    // Empty function for now - just return success result
+    const totalProcessed = parsedData.data.length;
+
+    strapi.log.info(`Syncing data: ${totalProcessed} records to process`);
+
+    // TODO: Add actual sync logic with Strapi here
+    // For now, just return success with zeros
+
+    return {
+      success: true,
+      totalProcessed: totalProcessed,
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      errors: []
     };
   }
 });

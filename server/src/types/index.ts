@@ -3,16 +3,24 @@ export interface ConfigData {
   selectedImportCollections: string[];
 }
 
-export interface ImportResult {
-  fileName: string;
-  headers: string[];
-  rowCount: number;
-  data: any[][];
-  totalRows: number;
-}
-
 export interface FileDataPath {
   path: string;
   originalname: string;
   size: number;
+}
+
+export interface ImportError {
+  row: number;
+  column: string;
+  value: any;
+  message: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  totalProcessed: number;
+  created: number;
+  updated: number;
+  deleted: number;
+  errors: ImportError[];
 }

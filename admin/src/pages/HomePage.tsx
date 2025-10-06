@@ -39,6 +39,12 @@ const HomePage = () => {
     setIsModalOpen(true);
   };
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalMessage('');
+    setModalTitle('');
+  };
+
   // Загрузка списка collectionTypes
   useEffect(() => {
     const fetchCollectionTypes = async () => {
@@ -125,12 +131,6 @@ const HomePage = () => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setModalMessage('');
-    setModalTitle('');
   };
 
   return (

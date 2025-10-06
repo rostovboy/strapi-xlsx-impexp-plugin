@@ -38,11 +38,8 @@ const importController = ({ strapi }: { strapi: Core.Strapi }) => ({
           .service('importService')
           .processImportFromPath(fileData);
 
-        ctx.send({
-          success: true,
-          data: result,
-          message: 'File imported successfully'
-        });
+        // Return the simplified result
+        ctx.send(result);
         return;
       }
 
@@ -51,11 +48,21 @@ const importController = ({ strapi }: { strapi: Core.Strapi }) => ({
 
     } catch (error: any) {
       strapi.log.error('Import controller error:', error);
+
+      // Return error in the same format
       ctx.send({
         success: false,
-        error: error.message,
-        message: 'Import failed'
-      }, 500);
+        totalProcessed: 0,
+        created: 0,
+        updated: 0,
+        deleted: 0,
+        errors: [{
+          row: 0,
+          column: 'System',
+          value: '',
+          message: error.message
+        }]
+      });
     }
   },
 });

@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const en = {
+  "welcome.message": "Welcome to",
+  "welcome.description": "Configure the display of the Export or Import button using the desired Collection through the options below",
+  "plugin.name": "Xlsx Import/Export Plugin",
+  "config.export-collections": "Export Collections",
+  "config.import-collections": "Import Collections",
+  "config.export-collections-description": "Choose collections to enable export",
+  "config.import-collections-description": "Choose collections to enable import",
+  "config.error-saving-configuration": "Error saving configuration.",
+  "config.success-saving-configuration": "Configuration saved successfully!"
+};
+exports.default = en;

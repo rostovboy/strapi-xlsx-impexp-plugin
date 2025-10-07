@@ -3,6 +3,7 @@ import { Button, Field, Flex, Modal } from '@strapi/design-system';
 import { useFetchClient } from '@strapi/strapi/admin';
 import { ConfigData } from '../../../server/src/types';
 
+
 const ImportButton = () => {
   const { get } = useFetchClient();
 
@@ -27,6 +28,9 @@ const ImportButton = () => {
     setModalMessage('');
     setModalTitle('');
     setIsSuccess(false);
+    if (isSuccess) {
+      window.location.reload(); // Reload page if success
+    }
   };
   const formatMessage = (message: string) => {
     return message.split('\n').map((line, index) => (

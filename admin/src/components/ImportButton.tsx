@@ -22,15 +22,12 @@ const ImportButton = () => {
     setIsSuccess(success);
     setIsModalOpen(true);
   };
-
   const closeModal = () => {
     setIsModalOpen(false);
     setModalMessage('');
     setModalTitle('');
     setIsSuccess(false);
   };
-
-  // Format message with proper line breaks
   const formatMessage = (message: string) => {
     return message.split('\n').map((line, index) => (
       <div key={index} style={{ marginBottom: index > 0 ? '8px' : '0' }}>
@@ -38,7 +35,6 @@ const ImportButton = () => {
       </div>
     ));
   };
-
   // End of Modal
 
   // Fetch plugin configuration on component mount

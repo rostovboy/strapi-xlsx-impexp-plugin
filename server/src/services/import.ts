@@ -4,7 +4,6 @@ import fs from 'fs';
 import type { FileDataPath, ImportError, ImportResult } from '../types';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
-
 const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
 
   async processImportFromPath(fileData: FileDataPath, contentTypeUid: string): Promise<ImportResult> {
@@ -39,10 +38,13 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
 
   normalizePhone(phone: string): string {
     if (!phone) return '';
+
     // Удаляем все лишние символы (скобки, пробелы, дефисы и т.д.)
     const cleaned = phone.replace(/[^\d+]/g, '');
+
     // Если начинается с 8 и это российский номер — заменяем на +7
     const normalized = cleaned.replace(/^8(\d{10})$/, '+7$1');
+
     try {
       const parsed = parsePhoneNumberFromString(normalized, 'RU');
       return parsed && parsed.isValid() ? parsed.format('E.164') : cleaned;
@@ -51,10 +53,15 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
     }
   },
 
-  parseWorkbook(workbook: any, contentTypeUid: string): { headers: string[], data: { [key: string]: any }[] } {
+  parseWorkbook(workbook: any, contentTypeUid: string): {
+    headers: string[],
+    data: { [key: string]: any }[],
+    errors: ImportError[]
+  } {
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const errors: ImportError[] = [];
 
     if (rawData.length === 0) {
       throw new Error('The file is empty');
@@ -67,18 +74,34 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
     const rows: any[][] = rawData.slice(1);
 
     const keyValueData = rows
-      .filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''))
-      .map((row) => {
+      .filter((row, rowIndex) => {
+        // Сохраняем строку если есть хотя бы одна заполненная ячейка
+        return row.some(cell => cell !== null && cell !== undefined && cell !== '');
+      })
+      .map((row, rowIndex) => {
         const obj: Record<string, any> = {};
+        const actualRowNumber = rowIndex + 2; // +2 потому что header + 1-based индекс
+
         headers.forEach((header, i) => {
           obj[header] = row[i] ?? '';
         });
 
-        // Приводим телефоны к E.164, если это контент shop
+        // Приводим телефоны к E.164 и валидируем, если это контент shop
         if (contentTypeUid === 'api::shop.shop') {
           ['phone1', 'phone2', 'phone3'].forEach((field) => {
             if (obj[field]) {
-              obj[field] = this.normalizePhone(String(obj[field]));
+              const originalValue = String(obj[field]);
+              const normalizedPhone = this.normalizePhone(originalValue);
+              obj[field] = normalizedPhone;
+              // Валидация длины номера (минимум 12 символов для E.164)
+              if (normalizedPhone && normalizedPhone.length < 12) {
+                errors.push({
+                  row: actualRowNumber,
+                  column: field,
+                  value: normalizedPhone,
+                  message: 'Некорректный номер'
+                });
+              }
             }
           });
         }
@@ -87,17 +110,29 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       });
 
     strapi.log.info(`Parsed Excel: ${headers.length} columns, ${keyValueData.length} rows`);
-    return { headers, data: keyValueData };
+    if (errors.length > 0) {
+      strapi.log.warn(`Found ${errors.length} validation errors during parsing`);
+    }
+
+    return {
+      headers,
+      data: keyValueData,
+      errors
+    };
   },
 
   async syncData(
-    parsedData: { headers: string[], data: { [key: string]: any }[] },
+    parsedData: {
+      headers: string[],
+      data: { [key: string]: any }[],
+      errors: ImportError[]
+    },
     contentTypeUid: string
   ): Promise<ImportResult> {
     const totalProcessed = parsedData.data.length;
     let created = 0;
     let updated = 0;
-    const errors: ImportError[] = [];
+    const errors: ImportError[] = [...parsedData.errors]; // Начинаем с ошибок валидации из парсинга
 
     strapi.log.info(`Syncing ${totalProcessed} records for ${contentTypeUid}`);
 
@@ -109,15 +144,15 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
         // Clear
         const cleanedData: Record<string, any> = {};
         const now = new Date().toISOString();
+
         for (const [key, value] of Object.entries(row)) {
-          if (key === "id" && (value === null || value === undefined || value === "")) {
+          if ((key === "id" || key === "documentId") && (value === null || value === undefined || value === "")) {
             continue;
           }
-          if (key === "documentId" && (value === null || value === undefined || value === "")) {
-            continue;
-          }
+
           // Empty strings to null
           const val = value === "" ? null : value;
+
           // Dates
           if (key === "updatedAt") {
             cleanedData[key] = now;
@@ -131,6 +166,7 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
             cleanedData[key] = val ?? now;
             continue;
           }
+
           cleanedData[key] = val;
         }
 
@@ -147,7 +183,6 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
               documentId: String(documentId),
               data: transformedData,
             });
-
             updated++;
             continue;
           }
@@ -157,7 +192,6 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
         await strapi.documents(contentTypeUid as any).create({
           data: transformedData,
         });
-
         created++;
 
       } catch (error: any) {
@@ -171,8 +205,16 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       }
     }
 
+    const success = errors.length === 0;
+
+    if (!success) {
+      strapi.log.warn(`Import completed with ${errors.length} errors`);
+    } else {
+      strapi.log.info('Import completed successfully');
+    }
+
     return {
-      success: errors.length === 0,
+      success,
       totalProcessed,
       created,
       updated,
@@ -180,7 +222,6 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       errors,
     };
   }
-
 
 });
 

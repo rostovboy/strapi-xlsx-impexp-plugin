@@ -33,6 +33,7 @@
   "dependencies": {
     "@strapi/design-system": "^2.0.0-rc.29",
     "@strapi/icons": "^2.0.0-rc.29",
+    "libphonenumber-js": "^1.12.23",
     "react-intl": "^7.1.11",
     "xlsx": "^0.18.5"
   },

@@ -2,6 +2,7 @@ import type {Core} from '@strapi/strapi';
 import XLSX from 'xlsx';
 import fs from 'fs';
 import type { FileDataPath, ImportError, ImportResult } from '../types';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 
 const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
@@ -13,7 +14,7 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
       }
 
       const workbook = XLSX.readFile(fileData.path);
-      const parsedData = this.parseWorkbook(workbook);
+      const parsedData = this.parseWorkbook(workbook, contentTypeUid);
       const syncResult = await this.syncData(parsedData, contentTypeUid);
 
       return syncResult;
@@ -36,7 +37,21 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
     }
   },
 
-  parseWorkbook(workbook: any): { headers: string[], data: { [key: string]: any }[] } {
+  normalizePhone(phone: string): string {
+    if (!phone) return '';
+    // Удаляем все лишние символы (скобки, пробелы, дефисы и т.д.)
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    // Если начинается с 8 и это российский номер — заменяем на +7
+    const normalized = cleaned.replace(/^8(\d{10})$/, '+7$1');
+    try {
+      const parsed = parsePhoneNumberFromString(normalized, 'RU');
+      return parsed && parsed.isValid() ? parsed.format('E.164') : cleaned;
+    } catch {
+      return cleaned;
+    }
+  },
+
+  parseWorkbook(workbook: any, contentTypeUid: string): { headers: string[], data: { [key: string]: any }[] } {
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -58,6 +73,16 @@ const importService = ({ strapi }: { strapi: Core.Strapi }) => ({
         headers.forEach((header, i) => {
           obj[header] = row[i] ?? '';
         });
+
+        // Приводим телефоны к E.164, если это контент shop
+        if (contentTypeUid === 'api::shop.shop') {
+          ['phone1', 'phone2', 'phone3'].forEach((field) => {
+            if (obj[field]) {
+              obj[field] = this.normalizePhone(String(obj[field]));
+            }
+          });
+        }
+
         return obj;
       });
 
